@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Manifest — Calisthenics Progress</title>
+<meta name="description" content="Track calisthenics progressions: log every set, see your last workout, and climb one rung at a time.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#E4E9E7">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Manifest">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#E4E9E7;
+    --card:#FAFBF9;
+    --ink:#12201D;
+    --steel:#6E7F7A;
+    --signal:#B4245F;
+    --ok:#1F6A4E;
+    --line:rgba(18,32,29,.14);
+    --line-soft:rgba(18,32,29,.07);
+    --faint:rgba(18,32,29,.13);
+    --strong:rgba(18,32,29,.35);
+    --disabled:rgba(18,32,29,.22);
+    --field:#fff;
+    --okSoft:rgba(31,106,78,.1);
+    --faintSoft:rgba(18,32,29,.06);
+    --signalSoft:rgba(180,36,95,.4);
+    --btnBg:#12201D; --btnText:#fff; --onSignal:#fff;
+    --invBg:#12201D; --invText:#EAF0EE; --invHead:#fff; --invMuted:#B4C2BD; --invBorder:rgba(255,255,255,.3);
+    --bar:#12201D;
+    /* Remote fonts first, then faces that ship with Android/iOS, so an offline
+       launch still gets a condensed display face and a true monospace. */
+    --display:"Barlow Condensed","Roboto Condensed","Arial Narrow",Impact,sans-serif;
+    --body:"Barlow","Roboto",system-ui,-apple-system,sans-serif;
+    --mono:"IBM Plex Mono","Roboto Mono",ui-monospace,Menlo,monospace;
+  }
+  [data-theme="dark"]{
+    color-scheme:dark;
+    --paper:#0F1614;
+    --card:#18211E;
+    --ink:#E6EDE9;
+    --steel:#8A9B95;
+    --signal:#FF5C8A;
+    --ok:#4FD1A0;
+    --line:rgba(230,237,233,.15);
+    --line-soft:rgba(230,237,233,.08);
+    --faint:rgba(230,237,233,.14);
+    --strong:rgba(230,237,233,.4);
+    --disabled:rgba(230,237,233,.18);
+    --field:#222D29;
+    --okSoft:rgba(79,209,160,.13);
+    --faintSoft:rgba(230,237,233,.06);
+    --signalSoft:rgba(255,92,138,.45);
+    --btnBg:#E7EEEA; --btnText:#0F1614; --onSignal:#2B0A14;
+    --invBg:#26332E; --invText:#E6EDE9; --invHead:#fff; --invMuted:#A3B2AC; --invBorder:rgba(255,255,255,.22);
+    --bar:#7FD8BC;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;touch-action:pan-y pinch-zoom}
+  body{
+    background:var(--paper);color:var(--ink);font-family:var(--body);
+    font-size:15px;line-height:1.45;
+    min-height:100vh;
+    padding-bottom:calc(72px + env(safe-area-inset-bottom));
+    /* vertical panning and pinch-zoom stay native; horizontal is ours, for swipe */
+    touch-action:pan-y pinch-zoom;
+  }
+  h1,h2,h3,.disp{font-family:var(--display);text-transform:uppercase;letter-spacing:.035em;margin:0;font-weight:700}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .wrap{max-width:640px;margin:0 auto;padding:0 14px}
+
+  /* ---------- header ---------- */
+  header{
+    position:sticky;top:0;z-index:20;background:var(--paper);
+    border-bottom:1px solid var(--line);
+    padding-top:env(safe-area-inset-top);
+  }
+  .hbar{display:flex;align-items:baseline;justify-content:space-between;padding:12px 14px 10px;max-width:640px;margin:0 auto}
+  .brand{display:flex;align-items:center;gap:8px;min-width:0}
+  .mark{width:32px;height:32px;flex:none;display:block;border-radius:50%}
+  .wm{font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:.04em;
+      line-height:1;text-transform:uppercase;color:var(--ink);white-space:nowrap}
+  .hmeta{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--steel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+
+  /* ---------- nav ---------- */
+  nav{
+    position:fixed;bottom:0;left:0;right:0;z-index:30;
+    background:var(--card);border-top:1px solid var(--line);
+    display:flex;padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav button{
+    flex:1;background:none;border:0;padding:11px 2px 13px;cursor:pointer;
+    font-family:var(--display);text-transform:uppercase;letter-spacing:.06em;
+    font-size:11.5px;font-weight:600;color:var(--steel);position:relative;
+  }
+  nav button .ic{display:block;font-size:15px;line-height:1.1;margin-bottom:2px;font-family:var(--body)}
+  nav button[aria-current="true"]{color:var(--ink)}
+  nav button[aria-current="true"]::before{
+    content:"";position:absolute;top:0;left:18%;right:18%;height:3px;background:var(--signal);
+  }
+  nav button:focus-visible{outline:2px solid var(--signal);outline-offset:-2px}
+
+  /* ---------- day chips ---------- */
+  .chips{display:flex;gap:6px;margin:14px 0 4px;flex-wrap:wrap}
+  .chip{
+    background:var(--card);border:1px solid var(--line);border-radius:3px;
+    padding:7px 10px 6px;font-family:var(--display);text-transform:uppercase;
+    letter-spacing:.06em;font-size:12.5px;font-weight:600;color:var(--steel);cursor:pointer;
+    display:flex;gap:6px;align-items:baseline;
+  }
+  .chip b{font-size:14px;color:var(--ink)}
+  .chip[aria-pressed="true"]{background:var(--invBg);border-color:var(--invBg);color:var(--invMuted)}
+  .chip[aria-pressed="true"] b{color:var(--invHead)}
+  .chip .nx{font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--signal)}
+
+  /* ---------- session head ---------- */
+  .sesshead{padding:8px 0 2px;border-bottom:2px solid var(--ink);margin-bottom:2px}
+  .sesshead h1{font-size:31px;line-height:1.02}
+  .sesshead .sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--steel);padding-bottom:8px}
+
+  /* ---------- movement card ---------- */
+  .mv{background:var(--card);border:1px solid var(--line);border-radius:6px;margin:12px 0;overflow:hidden}
+  .mv-top{padding:11px 13px 9px;border-bottom:1px solid var(--line-soft)}
+  .mv-eyebrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .mv-pattern{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--steel)}
+  .tierbadge{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--ink);white-space:nowrap}
+  .tierbadge i{color:var(--steel);font-style:normal}
+
+  /* signature: the rung ladder */
+  .rungs{display:flex;align-items:flex-end;gap:3px;height:20px;margin:9px 0 3px}
+  .rung{flex:1;background:var(--faint);border-radius:1px;height:6px}
+  .rung.done{background:var(--ink);height:10px}
+  .rung.now{background:var(--signal);height:20px}
+  .rung.now.ready{background:var(--ok)}
+
+  .mv-name{font-family:var(--display);font-size:22px;line-height:1.08;margin:6px 0 0}
+  select.tiersel{
+    width:100%;margin-top:7px;background:var(--paper);color:var(--ink);
+    border:1px solid var(--line);border-radius:4px;padding:8px 9px;
+    font-family:var(--body);font-size:14px;font-weight:500;
+    appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--steel) 50%),linear-gradient(135deg,var(--steel) 50%,transparent 50%);
+    background-position:calc(100% - 15px) 15px,calc(100% - 10px) 15px;background-size:5px 5px,5px 5px;background-repeat:no-repeat;
+  }
+  .selhint{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--steel);margin-top:5px}
+
+  .mv-body{padding:11px 13px 13px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:11px}
+  @media (max-width:400px){.row2{grid-template-columns:1fr}}
+  .box{background:var(--paper);border-radius:4px;padding:8px 9px;border-left:2px solid var(--line)}
+  .box.target{border-left-color:var(--signal)}
+  .box h4{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--steel);margin:0 0 3px;font-weight:500}
+  .box .val{font-family:var(--mono);font-size:14px;font-weight:600;letter-spacing:-.01em}
+  .box .meta{font-size:12px;color:var(--steel);line-height:1.3;margin-top:2px}
+  .box .exname{font-size:12.5px;font-weight:600;line-height:1.25;margin-top:3px}
+
+  .setlbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--steel);margin:0 0 6px}
+  .sets{display:flex;flex-wrap:wrap;gap:7px}
+  .setcell{position:relative;width:60px}
+  .setcell label{position:absolute;top:-1px;left:5px;font-family:var(--mono);font-size:8.5px;color:var(--steel);letter-spacing:.06em}
+  .setcell input{
+    width:100%;padding:15px 4px 6px;text-align:center;
+    font-family:var(--mono);font-size:19px;font-weight:600;color:var(--ink);
+    background:var(--paper);border:1px solid var(--line);border-radius:4px;
+  }
+  .setcell input:focus{outline:2px solid var(--signal);outline-offset:-1px;background:var(--field)}
+  .setcell input.filled{background:var(--field);border-color:var(--strong)}
+  .setctl{display:flex;gap:7px;margin-top:9px}
+  .tbtn{
+    background:none;border:1px dashed var(--line);border-radius:4px;padding:7px 11px;cursor:pointer;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--steel);
+  }
+  .tbtn:active{background:var(--paper)}
+
+  .flag{
+    display:inline-flex;align-items:center;gap:5px;margin-top:10px;
+    background:var(--okSoft);color:var(--ok);border-radius:3px;padding:5px 8px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+  }
+  .flag.hold{background:var(--faintSoft);color:var(--steel)}
+
+  /* ---------- save ---------- */
+  .noteinp{
+    width:100%;background:var(--card);border:1px solid var(--line);border-radius:5px;
+    padding:10px;font-family:var(--body);font-size:14px;color:var(--ink);margin-top:14px;resize:vertical;
+  }
+  .save{
+    width:100%;margin:12px 0 8px;padding:16px;border:0;border-radius:6px;background:var(--btnBg);color:var(--btnText);
+    font-family:var(--display);text-transform:uppercase;letter-spacing:.1em;font-size:17px;font-weight:700;cursor:pointer;
+  }
+  .save[disabled]{background:var(--disabled);color:var(--card);cursor:not-allowed}
+  .save.ghost{background:none;border:1px solid var(--line);color:var(--steel);font-size:13px;padding:11px}
+
+  /* ---------- banner ---------- */
+  .banner{
+    background:var(--invBg);color:var(--invText);border-radius:6px;padding:13px;margin:14px 0;
+  }
+  .banner h3{font-size:19px;color:var(--invHead)}
+  .banner p{margin:5px 0 0;font-size:13.5px;color:var(--invMuted)}
+  .banner .bbtns{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+  .banner button{
+    background:var(--signal);color:var(--onSignal);border:0;border-radius:4px;padding:9px 13px;cursor:pointer;
+    font-family:var(--display);text-transform:uppercase;letter-spacing:.08em;font-size:13px;font-weight:600;
+  }
+  .banner button.alt{background:none;border:1px solid var(--invBorder);color:var(--invMuted)}
+
+  /* ---------- history ---------- */
+  .hist{background:var(--card);border:1px solid var(--line);border-radius:6px;margin:11px 0}
+  .hist summary{padding:12px 13px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .hist summary::-webkit-details-marker{display:none}
+  .hist .ht{font-family:var(--display);font-size:19px;letter-spacing:.03em;text-transform:uppercase}
+  .hist .hd{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--steel);text-transform:uppercase;text-align:right;white-space:nowrap}
+  .hist .hbody{padding:2px 13px 13px;border-top:1px solid var(--line-soft)}
+  .he{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-soft);align-items:baseline}
+  .he:last-child{border-bottom:0}
+  .he .hn{font-size:13.5px;line-height:1.25}
+  .he .hn i{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--steel);font-style:normal;margin-bottom:1px}
+  .he .hs{font-family:var(--mono);font-size:14px;font-weight:600;white-space:nowrap}
+  .hnote{font-size:13px;color:var(--steel);font-style:italic;padding-top:9px}
+  .hsum{display:flex;align-items:center;gap:9px}
+  .delx{
+    border:1px solid var(--signalSoft);background:none;color:var(--signal);
+    width:34px;height:34px;border-radius:4px;cursor:pointer;font-size:15px;line-height:1;flex:none;
+  }
+  .delx:active{background:var(--signalSoft)}
+
+  /* ---------- ladders ---------- */
+  .ld{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 13px;margin:11px 0}
+  .ld .ldtop{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .ld .ldname{font-family:var(--display);font-size:20px;letter-spacing:.03em}
+  .ld .cur{font-size:14px;font-weight:600;margin-top:5px}
+  .ld .presc{font-family:var(--mono);font-size:11px;color:var(--steel);margin-top:2px}
+  .stepper{display:flex;gap:6px}
+  .stepper button{
+    width:38px;height:38px;border:1px solid var(--line);background:var(--paper);border-radius:4px;cursor:pointer;
+    font-size:17px;color:var(--ink);line-height:1;
+  }
+  .stepper button[disabled]{color:var(--disabled);cursor:not-allowed}
+
+  /* ---------- settings ---------- */
+  .sec{margin:22px 0 0}
+  .sec h2{font-size:15px;letter-spacing:.11em;color:var(--steel);padding-bottom:7px;border-bottom:1px solid var(--line);margin-bottom:11px;font-weight:600}
+  .opt{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:13px;margin-bottom:9px;cursor:pointer;display:block}
+  .opt[aria-pressed="true"]{border-color:var(--ink);border-width:2px;padding:12px}
+  .opt .oh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .opt .on{font-family:var(--display);font-size:19px;letter-spacing:.03em}
+  .opt .ob{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--signal)}
+  .opt p{margin:5px 0 0;font-size:13px;color:var(--steel);line-height:1.4}
+  .danger{background:none;border:1px solid var(--signalSoft);color:var(--signal);border-radius:5px;padding:12px;width:100%;cursor:pointer;
+    font-family:var(--display);text-transform:uppercase;letter-spacing:.09em;font-size:14px;font-weight:600;margin-top:6px}
+
+  /* ---------- summary ---------- */
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:11px 12px}
+  .kpi h4{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--steel);margin:0 0 4px;font-weight:500}
+  .kpi .big{font-family:var(--display);font-size:34px;line-height:.95;letter-spacing:.01em}
+  .kpi .big small{font-size:15px;color:var(--steel);letter-spacing:.04em;margin-left:2px}
+  .kpi .sub{font-size:12px;color:var(--steel);line-height:1.3;margin-top:4px}
+  .kpi.hero{grid-column:1 / -1;border-left:3px solid var(--signal)}
+  .kpi.hero .big{font-size:44px}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 13px;margin:11px 0}
+  .panel h3{font-family:var(--display);font-size:19px;letter-spacing:.03em}
+  .panel .ph{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--steel);margin-bottom:2px}
+  .panel .pnote{font-size:12.5px;color:var(--steel);margin-top:9px;line-height:1.4}
+
+  .chart{display:flex;align-items:flex-end;gap:5px;height:118px;margin-top:13px}
+  .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;min-width:0}
+  .col .bar{width:100%;background:var(--bar);border-radius:2px 2px 0 0;min-height:3px;transition:height .3s}
+  .col.last .bar{background:var(--signal)}
+  .col .cval{font-family:var(--mono);font-size:9.5px;color:var(--steel);margin-bottom:3px}
+  .col .clab{font-family:var(--mono);font-size:9px;color:var(--steel);margin-top:5px;letter-spacing:.03em;white-space:nowrap}
+  .col.zero .bar{background:var(--faint)}
+
+  .hbars{margin-top:12px}
+  .hb{margin-bottom:11px}
+  .hb:last-child{margin-bottom:0}
+  .hb .hbtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px}
+  .hb .hbn{font-size:13.5px;font-weight:500;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hb .hbv{font-family:var(--mono);font-size:11px;color:var(--steel);white-space:nowrap}
+  .track{height:8px;background:var(--faintSoft);border-radius:2px;overflow:hidden}
+  .track i{display:block;height:100%;background:var(--bar);border-radius:2px}
+  .track i.sig{background:var(--signal)}
+
+  .pbrow{display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+  .pbrow:last-child{border-bottom:0}
+  .pbrow .pn{font-size:13.5px;line-height:1.25}
+  .pbrow .pn i{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--steel);font-style:normal;margin-bottom:1px}
+  .pbrow .pv{font-family:var(--mono);font-size:16px;font-weight:600;white-space:nowrap}
+  .pbrow .pv b{font-weight:600;color:var(--signal)}
+
+  .empty{text-align:center;padding:44px 20px;color:var(--steel)}
+
+  /* page transitions for swipe / tab changes */
+  @keyframes inFromRight{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:none}}
+  @keyframes inFromLeft{from{opacity:0;transform:translateX(-26px)}to{opacity:1;transform:none}}
+  #view.in-next{animation:inFromRight .2s cubic-bezier(.2,.7,.3,1)}
+  #view.in-prev{animation:inFromLeft .2s cubic-bezier(.2,.7,.3,1)}
+  .empty .eh{font-family:var(--display);font-size:22px;color:var(--ink);margin-bottom:6px}
+  .empty p{font-size:13.5px;margin:0}
+  .toast{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));
+    background:var(--invBg);color:var(--invText);padding:11px 16px;border-radius:5px;z-index:50;
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;max-width:88vw;text-align:center;
+    opacity:0;pointer-events:none;transition:opacity .18s
+  }
+  .toast.on{opacity:1}
+
+  /* ---------- confirm dialog ---------- */
+  .scrim{
+    position:fixed;inset:0;z-index:60;background:rgba(8,14,12,.55);
+    display:flex;align-items:center;justify-content:center;padding:22px;
+  }
+  .scrim[hidden]{display:none}
+  .modal{
+    background:var(--card);border:1px solid var(--line);border-radius:8px;
+    padding:18px;max-width:340px;width:100%;
+  }
+  .modal h3{font-family:var(--display);font-size:23px;letter-spacing:.03em;color:var(--ink)}
+  .modal p{margin:7px 0 0;font-size:13.5px;color:var(--steel);line-height:1.45;white-space:pre-line}
+  .mbtns{display:flex;gap:8px;margin-top:16px}
+  .mbtns button{
+    flex:1;padding:12px 10px;border-radius:5px;cursor:pointer;
+    font-family:var(--display);text-transform:uppercase;letter-spacing:.08em;font-size:14px;font-weight:600;
+  }
+  .mno{background:none;border:1px solid var(--line);color:var(--steel)}
+  .myes{background:var(--signal);border:0;color:var(--onSignal)}
+  .mbtns button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hbar">
+    <div class="brand">
+      <img class="mark" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIQAAACECAMAAABmmnOVAAABgFBMVEUHGy0AAADTpUzHnUYzNi0WIylMRzGpiUi4lEsADCOOeEQkKylnWjZ2ZDrirU5aUjeRdDv/qlWEbDmcgknkslQHFB10Z0P//wC9fz6shT3ZpUoAChzVokeqqlXGl0T/f3/Lm0NCPSrImEKxiDrjrU1/fwDZpkr/AAC/vz/dsVTjrE3NnETHmEjYpUnhrExWVEJkXUGDbkG4lEehfjvVpEnZpks9QDTPnkXSpk69kUHhq0y7jkF/fzp/f3++kj7hrE4/Pz9/VSp9cEuZfzPmsE4ZIB5/Pz+1h0HCkz7nsU/nsU8lJx8/PwCyf0y/v3/FkD3NnUXirUz/vz/jsU9VVSq/f3+4jD/Rq2DXsGLkumQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwJSY5AAAAYHRSTlP+AP3+/v7+/v7+/v7+/v7+/gP//v/+/gEE/9H+kgMyAm7+TxOTArIBBP9skRZysP/+/hH/NU//qBcuzSgEAjI5BAb/Cnb/BBk8Ton/BAoEHcZPBDQGBCj///8AAAAAAADNXJ4IAAAQIklEQVR42r1cB3vbuLIFQTQCYDGpYhU7lmvsxInTN9l6t97e733v/f8/8mYGpIqtQsZ2uN86TiQRhzNnKjBiUbdrePD0Cf3yzcl3x0dH0+kHuKbTo6Pj705+Ry88eXow7HhT1gnB3h7+cXJ49Ox8zO9c4/Pp0eEJvmNvb/hIIA4QwV8Oj84573FTlV4JIZzEywmh8tTqGKCcXx/+hDgOHh7EcB9FcDwFAcTWK8dYcvuaJEwKlWoQyfQYBbI/fFAQZyCEb4+nIAHtBa3PmMOHTwuL16sUxSLDK1JZkMj0GMVx9mAgEMLro3HGq9wxXB+e1xrOswzEQhf+nvFYWw9IEIgAHOPrk5YwWAs2RtHhM94zqUAEThWGw4JvkBMOKMEYcALE4tNihLh0ikBAHhWI4yPAGN4fRA1BK0QgvOZZPCJOrLvkzBdxlhmrEIcYAIyv6Rb3AvHkInr9jHOLQpAKEJgS7r/1kiIFiZDcmEwBxkl08eQ+IMAkjkAKCMGlcRaXgrW6RGoyblUN44hu9JkgAP/huGfwXqLk2ZtdMliRhyp4pvETzmbjQ7rZ54DYj/aPOE/hPgCBF4J1vEQZI5XgF8Ovf9gmjI0gLvZQDKAJkmh3CHg5kB/egXk+/jrau+gK4uwiOubcgyZUnH0eBJJGwfkrmSTCZMfR8KwbiIPoP896RgAfCyTFPa7ZKKMbvOpN/xwddAGxH73+0LPABhXzlN3z8jGnW/Hzkw3EWAviKdJhAGwos5Fg975EEIaIgRhP24LYjw45x0/prGQPcqVILyZ19nGtLNg6ORzzGOgwIyQ7rhzDmdopLlDrK8b6BdDzaRsQ+4jBJX3FjWjxiJg/cG5St8NaRxkQo1+uRcHWYwA6ZaPdDlKamKI5wIh3EFgWmYbbpoBifxcI5ANiKHtFG28U1wjwj5RtR11mKNo0O7yDgt32D8BJgRjaUbKC9ZvEJhY7UKSEouQfb/uLVRBn0fMxF0lrDCzncS0H+GUnh1J8S78Yn0Rnm0EMD/76gavJxLfFwAoe1IH/tfBrIAsQlj7/82q6xVYJ8ax3w5K8FR8CMYMYaoXYnR8oMw2fiqertGArmdxxz6J/HbX2hbyhJYF41UJ0mcWPHa/kfGw5h/nIQVoCf3SQxBxDjF5x5yd0NsDQfric5SxAXBz89e9oGJq3Dxe1OhoQuz8owapBIUk63j+4WANiLzrq+Qn4tA6R+/0KBn1nRSgT79it52lqK0g89+6CeAIeQrNEdYpZasEH0oZcFZMyqbG2Cn9zAqrVSht0sngtKWQO4uBbVIaMR12io1uIIebVbdbOVFzygs8E1EWVjpviHd5d2dSOFy6LLSljgHbfKX+Qeu4u7eWq4CUk3E5XIIl+s7gx2g6waOV+wpi5miukBjE8e45GobKOeVTF6we0vlpUPyofDCDHNkKX2knL68VdDTLxfIA/Tr4droDYAzelEmaM7CQIRgukcH9a/D0WpBpKZSiYmOHO3UgxkfPFF9cI2W+mjSgCiLPhc171Jz7rmtNKur/DMl0T46hSN1oPmNHOgdSFWFMzkS9S/Hmdf7M6eD7rAWb+phsCrMVtZRaUM8C4XAla1QJdrMCUR6xznEBAPa25yYJ5giDAg2xgpXSVqAbLRgGLD8KjX/Yu6dFp8RW5O42BFbzZOhWLGJK3GX8eSmW2YITja+OWEK+8lYMBNiLELK+tLSyuqyINjOv3oU66dVmyx/VhLQUT6OvTwAoEMYxeo7cr1wviR196eHLBBgYpd4l31vDkNd2xcwNFL9DxbuTILUoj3+BhXKL4V9GwBrEPPmKtINDLyYG3PlW8p1SPTMEHW5jfzYFvLlAsMfVoVqVoLd8Q1tIM/t1cU0xHEBffjA3YbTZjy6aOfAdbs0Lp3Pb7xjIl5Boj9TOl4kKjy7o0MpFCNG+TECdmZkOqQwbix79eBBBQfmcQucwo9BXSklZHpSPhfgTXJ/vCa70udmB4UKqIZ2Qhvq8sstVY0ayk9KZUp8hyiBJvkRUE4hl3ExV8hPo/ZNwK29XA5bDCGtXanvG8VJ57p+H9TmreVADh3TIuNdebgh+8UJwGEEhLcLlFTCvKG79qapLpHvYlV55HQTjUAylQZmUOmgLrkNKpMq7TvQaF1kDNDV4YEheg5nMAwCipy4GWG0O4x6ezS3ciDwTRAsFCeMhFX6TgsmDtud9qMpwqNhuLSZ+lCYvfAQAEMeUy2eaxIVP3yxgoeYjRYI11Uk0CKF4n/nyR4khym5uScIH5C+mDDaOfUBtvYrm1uFgkLKJOYXj44SY5X86v6lcghIsGxAZSsBHp4y/RkB1Ev+d+k7cM12AFBKYQer4aF7NVCOCqUzAXnc5kDSKO3UZ9kH0csKfREQLaFj9LvlRo5r2YlwWf55W/LOe65KWltAQQGyMVKSnfrA/25ip6yp5E5wbX2VLaw+PMjSMBwzezQAD8X6nlpD+mJK+GhRZCv27yFFDTu8S/iJ6w6ITbhOltqaVdJJDOg+H7pYWl5au6kEs5n3Dht02pUpGpRICRMkiy0UADg+XL9QYd1wVRSiYo/EIbfb0KAtkoakmYfl7/pu70e+dGKuPvAcRRNqcEGNumCgfuI2sNm75vJAGCXi1/fO1Z6C/FxAa13Y5hidD9QAoQsL4CEOQliBIKMgX9o1zfCSnQX4TaezIvNyBhbQiwUhGnZL95n+Dz26TAdSr0fhIUhZ6CES+LuHYIXLt1VW+wM0M2CXhd8Eso/UnKVzDkOSq1r7BIVS7k4neYqZp10HP784j9bgzvqHkpIElkG0DQLXFtSMpr88ewKfp2viWZgu1Qr6mq3C9e87wp2m+DwHX6DTPVeJ+dcCRHcFUvVX+wXhLoKei5jJrkilG45Pr9BLKxiYB0U+tqIBLyrVT6Q2Qp+UDUfQMzWL0jrHPjKN/o+UTEX7HvyDj8riYEgIA0xKo+G1zCMjJPleuLCp/fsckkvLHqBQqD26G+oqhbSXpTWYfFljTfs2OQr9habzhqBnGPqYMqMWxJcp8KFEEVpi6xmyp+NKZEa9a1VcNHNF9bri89H3LhDyw4bbGzCYF3rIM0+BRtaHnjGkZQftkPLMU9EijNMDGLd4GAl0ZXBMJvL4MDDfVyZ6qihbG2wg3CEE+l1JeQXtfONVdFY7ybQbgYktviZzblDqqeQEchN5GiCd+aB9+KDMz7SvW9VVKRO/ATmTt06Iote4sNsSMkbxL8flL8kaGvSnlY3YpNiVgthNRo1fQElNS9gSP+ke+2FtKb1cdWJuhqDePCUhTCylP2AbCUlNEkfeobrE2tgltQbn67Sk9AKjn5Tj6TuFQvh/z/zYpmZW6tTdc9WlgKngVAvGDnKBAAIQeQk5qqEmsTY6LA8kvag9voedWjaEKBNoUqKG21UURLWVhKostMAwiSBAblTZ1hqPztqky1l1ANKokb95dcosMH5xD3qlblPC4Vq9pvA4gPvFEHxgaVtO2OWCb+1K8r9Jw6aDyO27ZAIbJd+mShDiRmScRUUC7pti2aVGO1lUtwGCijJq7uavQ3kv0fZXVwQUTMhYm+FBM2aNsu8pZh3ZdmMdarie/V6US7z8NSIXrUJtrCWa19lgGaY0rGC+7JWkx4unW8WJNQ/NzCbW+QBJplXXEp3Mre5p53uW0IYJNZ54YZFJm0BY3HfFJVJ3Rcy84gKgpgGMpFm/78nU/nUHAbPGvUpLa86qzUDDJ986+Q1PCum7CqR+pQmPL2bhLbbivurlJ7aeIgqaH0ztS9Q5e3/HTesxQnzDzx47zFxs88fNXrFL08mUF6F51rTA+IqxOlJ60ZNZuX4L9gGg5+vN/WJmCd/rwkxkQXU34WHIWCB9O2nURtkzaBEv4ExqnAd/3vTTsQL029TnATmPIHG501qXhLrTo+b4g4mxnnKlMN3rfeJgnr1BZKZaBqzANS2aql22ZiUBlihBXaikS4TrYV1smDcURYEGPXhpj58v26lH/NdWPwABz216nDntRW0dY2mnWQlyKGgvgJMdPGXY4vsbJ3CQlBjmchhVA3g8HL9139VEhpRGgNYJPEseVOaitCqJT2Nbgxlb2pT8EJa0Q3j4eRA5sk2C5CUnTZ8ilxPx27zm6lry9tz3ZyVbhRa76PDqhxtqhGWwrCJ5sy4i78hGQ5mfHX0ZBaiGCtaYdA6s0mrijeIRIK9BLpad3HPAbpdtGH3rySTjtqY/QHAoFt5VcJ03FrbWxRfF510waU5NRWJn2wpP0mnNoS5Vx7EAptozydd/mD02x7aGLricjWSSorcA8WbGOv3nT5dVxhSGpJza0GIGRrWmLMGn9zsdh+AgCKP9DxsnZXSrT8eb79NMT40dXI73nJeE7L+ZYkVh8qK7+kIJp9hsXm7G9fWBQOBQHZ5dLmbHRALdVZawO591XSjtfp8jZ1dDb8G2YVls++DAY0Dfjx1cqGfdgRhNg6+jIgNFrim9PVowvR8NsTjKWDzDP56IYB9ZrB7fqvbh3iwOMs4LelicUXUYanBHfvzsGeaEwHK76AQiyy0q852EPnzcBM01762Arx2JQS8ds1R5xQIeHAmXpcFO+p0zm6XnfYK7rYw8MDWGA/qsuSBiwj8Z9+3btYfwDwv3iOMOcj+ajWqbGVsOEAYDgKmaOdPqLjLJAQknbINx8KRVrYx4tkKbUvR1sOhUbDvW/OsRSrsvSxDIO2ZF78sOV4bHQWnYw1ndz0j4QB1O0/Pd92UBhd1nfoSZx+DFmEE/0KSHmw6/D47zGIOP3wvGgwvN11eJyO0WP2J6uHtpGCdKH4u93H6OcowEZGD+i1pKajDIjhadvRCj03p4e5lKHtEsTwz7ZDJh8h4NOu9UPQU5JZWBlOSv+z/bjN12P0WkI/iEqw/4x7xMWnw/bjNiiL385pQGbA43t7DB/TyI8zL37rMniE/uKHZ9R2Ueaes0dihJNgSIfTqNsIFubfQE8jEiZfcV5+tk5ciXu4LIEc/13nYTQaywNipNTozeL0s2BInKz0DAfigA7dx/KIGD9ck3HL3LSf0lxSBECgSVMQw1X0WQOKzahmZnGvypuMF528hioaCCr+9PazRzWboVWeynpsduTbDq3imG8Ynp1pfn2fodUwvnsy5aRXpmzc4yMvdo7v+hHPcOsBh11H/PQkGt5rfDcMMn8NMFK8pcsruL0pNgKRIqdZa2Np7nkGEA7vP8hcj3R/nNbDzEzklia6RwVOBrjQYA9z/r7QMb6kU5qllqCSP759mJHuerj95PoTryfLQd74rQI0zh7jkXkdxtt7eKx2oBxNtwMvP129frDh9gZGdAziwCn/Zsg/tVbTJhjOTFQ0tyDrOf8i5qfvHnbMf/6FB/vvTse4xRC+boD62/SlC8QQ+tID5lSq4/HpPx7hCw8WX/3w0+H1C07fKlCf4k4aOCQbE/MXP3//+pG++mHlSzDeXk/Pxzzwgb51gXjBxy9Or96+ftwvwVj9OpB//+3w3fXV6ek5XKenV1f/ePv8s78O5P8BzRv/MkOmV+wAAAAASUVORK5CYII=" alt="" width="132" height="132">
+      <span class="wm">Manifest</span>
+    </div>
+    <div class="hmeta" id="hmeta"></div>
+  </div>
+</header>
+
+<main class="wrap" id="view"></main>
+
+<nav id="nav">
+  <button data-t="summary" aria-current="true"><span class="ic">◲</span>Summary</button>
+  <button data-t="session"><span class="ic">▤</span>Session</button>
+  <button data-t="ladders"><span class="ic">▮</span>Ladders</button>
+  <button data-t="history"><span class="ic">↺</span>History</button>
+  <button data-t="settings"><span class="ic">⚙</span>Setup</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h3 id="mTitle"></h3>
+    <p id="mBody"></p>
+    <div class="mbtns">
+      <button class="mno" id="mNo">Cancel</button>
+      <button class="myes" id="mYes">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   PROGRESSION LADDERS
+   Each tier: n=name, s=sets, lo/hi=rep or second range, u=unit
+   ============================================================ */
+const R='reps', S='sec';
+const S_UNIT='sec';   // alias: `S` is shadowed inside metrics()
+const LADDERS = {
+  vertPush:{p:'Vertical Push',name:'Pike / Handstand',t:[
+    {n:'Incline Pike Push-Ups',s:3,lo:8,hi:12,u:R},
+    {n:'Pike Push-Ups',s:3,lo:8,hi:12,u:R},
+    {n:'Decline Pike Push-Ups',s:3,lo:8,hi:12,u:R},
+    {n:'Diamond Pike Push-Ups',s:3,lo:6,hi:10,u:R},
+    {n:'Pseudo Planche Pike Push-Ups',s:3,lo:5,hi:8,u:R},
+    {n:'Wall Handstand Push-Ups',s:3,lo:5,hi:8,u:R},
+    {n:'Handstand Push-Ups',s:3,lo:3,hi:8,u:R}]},
+  horizPush:{p:'Horizontal Push',name:'Push-Ups',t:[
+    {n:'Knee / Incline Push-Ups',s:3,lo:8,hi:12,u:R},
+    {n:'Full Push-Ups',s:3,lo:8,hi:15,u:R},
+    {n:'Diamond Push-Ups',s:3,lo:8,hi:12,u:R},
+    {n:'Pseudo Planche Push-Ups',s:3,lo:6,hi:10,u:R},
+    {n:'Decline Push-Ups',s:3,lo:8,hi:12,u:R},
+    {n:'Archer Push-Ups',s:3,lo:5,hi:8,u:R,side:1},
+    {n:'Planche Push-Ups',s:3,lo:3,hi:8,u:R}]},
+  horizPull:{p:'Horizontal Pull',name:'Rows',t:[
+    {n:'Incline Rows',s:3,lo:8,hi:12,u:R},
+    {n:'Horizontal Rows',s:3,lo:8,hi:12,u:R},
+    {n:'Wide Grip Rows',s:3,lo:8,hi:12,u:R},
+    {n:'Narrow Grip Rows',s:3,lo:8,hi:12,u:R},
+    {n:'Pseudo Planche Rows',s:3,lo:6,hi:10,u:R},
+    {n:'Archer Rows',s:3,lo:5,hi:8,u:R,side:1},
+    {n:'One-Arm Rows',s:3,lo:5,hi:8,u:R,side:1}]},
+  vertPull:{p:'Vertical Pull',name:'Pull-Ups',t:[
+    {n:'Jackknife Pull-Ups',s:3,lo:8,hi:12,u:R},
+    {n:'Pull-Up Negatives (3–5s)',s:3,lo:5,hi:8,u:R},
+    {n:'Band-Assisted Pull-Ups',s:3,lo:5,hi:10,u:R},
+    {n:'Pull-Ups',s:3,lo:5,hi:12,u:R},
+    {n:'Wide Grip Pull-Ups',s:3,lo:5,hi:10,u:R},
+    {n:'Archer Pull-Ups',s:3,lo:4,hi:8,u:R,side:1},
+    {n:'Weighted Pull-Ups',s:3,lo:5,hi:8,u:R},
+    {n:'One-Arm Pull-Ups',s:3,lo:2,hi:5,u:R,side:1}]},
+  hang:{p:'Grip & Hang',name:'Hangs',t:[
+    {n:'Dead Hangs',s:3,lo:20,hi:60,u:S},
+    {n:'Active Hangs',s:3,lo:15,hi:45,u:S},
+    {n:'Arch Hangs',s:3,lo:15,hi:40,u:S},
+    {n:'Weighted Dead Hangs',s:3,lo:20,hi:45,u:S},
+    {n:'One-Arm Assisted Hangs',s:3,lo:15,hi:30,u:S,side:1}]},
+  scap:{p:'Scapular Control',name:'Scap Work',t:[
+    {n:'Scapular Shrugs',s:3,lo:15,hi:20,u:R},
+    {n:'Scapular Pulls',s:3,lo:12,hi:15,u:R},
+    {n:'Wide Grip Scapular Pulls',s:3,lo:10,hi:15,u:R},
+    {n:'Weighted Scapular Pulls',s:3,lo:8,hi:12,u:R}]},
+  dips:{p:'Vertical Push',name:'Dips',t:[
+    {n:'Dip Support Hold',s:3,lo:15,hi:30,u:S},
+    {n:'Negative Dips (3–5s)',s:3,lo:5,hi:8,u:R},
+    {n:'Band-Assisted Dips',s:3,lo:6,hi:12,u:R},
+    {n:'Bar Dips',s:3,lo:6,hi:12,u:R},
+    {n:'Archer Dips',s:3,lo:5,hi:8,u:R,side:1},
+    {n:'Weighted Dips',s:3,lo:5,hi:8,u:R},
+    {n:'One-Arm Dips',s:3,lo:2,hi:5,u:R,side:1}]},
+  sphinx:{p:'Elbow & Tricep',name:'Sphinx Push-Ups',t:[
+    {n:'Incline Sphinx Push-Ups',s:3,lo:8,hi:12,u:R},
+    {n:'Sphinx Push-Ups',s:3,lo:8,hi:12,u:R},
+    {n:'Decline Sphinx Push-Ups',s:3,lo:6,hi:10,u:R}]},
+  squatBi:{p:'Squat — Both Legs',name:'Squats',t:[
+    {n:'Bodyweight Squats',s:3,lo:15,hi:20,u:R},
+    {n:'Pause Squats (2–3s)',s:3,lo:10,hi:15,u:R},
+    {n:'Tempo Squats (5s down)',s:3,lo:10,hi:12,u:R},
+    {n:'Weighted Squats',s:3,lo:10,hi:15,u:R}]},
+  squatUni:{p:'Squat — One Leg',name:'Single-Leg Squats',t:[
+    {n:'Lunges',s:3,lo:12,hi:15,u:R,side:1},
+    {n:'Split Squats',s:3,lo:12,hi:15,u:R,side:1},
+    {n:'Bulgarian Split Squats',s:3,lo:10,hi:12,u:R,side:1},
+    {n:'Shrimp Squats — Beginner',s:3,lo:8,hi:12,u:R,side:1},
+    {n:'Shrimp Squats — Intermediate',s:3,lo:8,hi:12,u:R,side:1},
+    {n:'Shrimp Squats — Advanced',s:3,lo:6,hi:10,u:R,side:1},
+    {n:'Weighted Shrimp Squats',s:3,lo:5,hi:8,u:R,side:1},
+    {n:'Assisted Pistol Squats',s:3,lo:8,hi:10,u:R,side:1},
+    {n:'Pistol Squats',s:3,lo:5,hi:12,u:R,side:1}]},
+  hinge:{p:'Hinge / Hamstrings',name:'Nordic Chain',t:[
+    {n:'Glute Bridges',s:3,lo:15,hi:20,u:R},
+    {n:'Single-Leg Glute Bridges',s:3,lo:12,hi:15,u:R,side:1},
+    {n:'Assisted Nordic Curls',s:3,lo:5,hi:8,u:R},
+    {n:'Banded Nordic Curls',s:3,lo:5,hi:8,u:R},
+    {n:'Nordic Curls',s:3,lo:5,hi:10,u:R},
+    {n:'Weighted Nordic Curls',s:3,lo:3,hi:6,u:R}]},
+  calf:{p:'Calves',name:'Calf Raises',t:[
+    {n:'Calf Raises',s:3,lo:15,hi:20,u:R},
+    {n:'Single-Leg Calf Raises',s:3,lo:12,hi:15,u:R,side:1},
+    {n:'Elevated Single-Leg Calf Raises',s:3,lo:10,hi:12,u:R,side:1},
+    {n:'Weighted Single-Leg Calf Raises',s:3,lo:10,hi:12,u:R,side:1}]},
+  plank:{p:'Anti-Extension Core',name:'Plank / Pike',t:[
+    {n:'Straight Arm Plank',s:3,lo:30,hi:60,u:S},
+    {n:'Pike Hold',s:3,lo:20,hi:45,u:S},
+    {n:'Pike Lifts',s:3,lo:12,hi:15,u:R},
+    {n:'Pseudo Planche Hold',s:3,lo:15,hi:30,u:S},
+    {n:'Planche Lean',s:3,lo:10,hi:20,u:S}]},
+  lsit:{p:'Core Flexion',name:'L-Sit',t:[
+    {n:'Tuck Sit',s:3,lo:20,hi:40,u:S},
+    {n:'L-Sit — One Leg Extended',s:3,lo:15,hi:30,u:S},
+    {n:'L-Sit — Both Feet, Supported',s:3,lo:15,hi:40,u:S},
+    {n:'L-Sit — Hands Forward',s:3,lo:10,hi:30,u:S},
+    {n:'L-Sit on Parallel Bars',s:3,lo:10,hi:30,u:S},
+    {n:'V-Sit',s:3,lo:10,hi:20,u:S}]},
+  hollow:{p:'Body Tension',name:'Hollow Body',t:[
+    {n:'Tuck Hollow Hold',s:3,lo:20,hi:40,u:S},
+    {n:'Hollow Body Hold',s:3,lo:20,hi:40,u:S},
+    {n:'Hollow Body Rocks',s:3,lo:15,hi:20,u:R},
+    {n:'Arms-Overhead Hollow Rocks',s:3,lo:15,hi:20,u:R}]},
+  lateral:{p:'Lateral & Shoulder',name:'Lateral Work',t:[
+    {n:'Bodyweight Lateral Raises',s:3,lo:12,hi:15,u:R},
+    {n:'Side Plank',s:3,lo:20,hi:45,u:S,side:1},
+    {n:'Banded Lateral Raises',s:3,lo:12,hi:15,u:R},
+    {n:'Lateral Planche Lean',s:3,lo:15,hi:20,u:S,side:1}]}
+};
+
+const PROGRAMS = {
+  p3:{label:'3-Day Full Body',note:'Beginner base. One push day, one lower day, one pull day.',days:[
+    {id:'A',title:'Upper — Push',slots:['vertPush','horizPush','horizPull','dips','hang']},
+    {id:'B',title:'Lower Body',slots:['squatBi','squatUni','hinge','calf','hollow']},
+    {id:'C',title:'Upper — Pull',slots:['vertPull','horizPull','vertPush','lsit','scap']}]},
+  p4:{label:'4-Day Upper / Lower',note:'Intermediate split. More volume per pattern, legs twice.',days:[
+    {id:'A',title:'Upper — Push',slots:['vertPush','horizPush','dips','sphinx','hollow']},
+    {id:'B',title:'Lower Body',slots:['squatUni','hinge','squatBi','calf','lateral']},
+    {id:'C',title:'Upper — Pull',slots:['vertPull','horizPull','hang','lsit','scap']},
+    {id:'D',title:'Lower + Core',slots:['squatUni','hinge','calf','plank','hollow']}]}
+};
+
+/* which pattern group each ladder belongs to — used for the balance chart */
+const GROUPS={
+  Push:['vertPush','horizPush','dips','sphinx'],
+  Pull:['vertPull','horizPull','hang','scap'],
+  Legs:['squatBi','squatUni','hinge','calf'],
+  Core:['plank','lsit','hollow','lateral']
+};
+const groupOf=id=>Object.keys(GROUPS).find(g=>GROUPS[g].includes(id))||'Core';
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const KEY='ladder:v1';
+let state=null, tab='summary', banner=null, mem=null;
+
+function blankState(){
+  const tiers={}; for(const k in LADDERS) tiers[k]=0;
+  return {program:'p3',tiers,cursor:{p3:0,p4:0},sessions:[],draft:null,theme:'light'};
+}
+/* Storage adapter.
+   Inside the Claude artifact frame the host provides window.storage.
+   Installed as a standalone app there is no host, so fall back to localStorage,
+   and to memory only if both are unavailable. */
+const store = (() => {
+  if (window.storage && typeof window.storage.get === 'function') {
+    return { kind:'host',
+      get:k=>window.storage.get(k),
+      set:(k,v)=>window.storage.set(k,v) };
+  }
+  try {
+    const probe='__manifest_probe__';
+    localStorage.setItem(probe,'1'); localStorage.removeItem(probe);
+    return { kind:'local',
+      async get(k){ const v=localStorage.getItem(k); if(v==null) throw new Error('not found'); return {key:k,value:v}; },
+      async set(k,v){ localStorage.setItem(k,v); return {key:k,value:v}; } };
+  } catch(e){}
+  return { kind:'memory', async get(){ throw new Error('not found'); }, async set(){ return null; } };
+})();
+
+async function load(){
+  try{
+    const r=await store.get(KEY);
+    state=r&&r.value?JSON.parse(r.value):blankState();
+  }catch(e){ state=mem?JSON.parse(mem):blankState(); }
+  // backfill any ladders added later
+  for(const k in LADDERS) if(state.tiers[k]==null) state.tiers[k]=0;
+  if(!state.cursor) state.cursor={p3:0,p4:0};
+  if(!state.theme) state.theme='light';
+  applyTheme();
+}
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', state.theme);
+  const mc=document.querySelector('meta[name="theme-color"]');
+  if(mc) mc.setAttribute('content', state.theme==='dark' ? '#0F1614' : '#E4E9E7');
+}
+let saveT=null;
+function save(now){
+  mem=JSON.stringify(state);
+  clearTimeout(saveT);
+  const go=async()=>{ try{ await store.set(KEY,mem);}catch(e){} };
+  if(now) go(); else saveT=setTimeout(go,600);
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const prog=()=>PROGRAMS[state.program];
+const days=()=>prog().days;
+function tierOf(id){ return Math.min(state.tiers[id]||0, LADDERS[id].t.length-1); }
+function tierData(id,i){ return LADDERS[id].t[i]; }
+function unitLabel(u,v){ return u===S? v+'s' : v; }
+function fmtSets(sets,u){ return sets.map(v=>u===S? v+'s':v).join(' · '); }
+function total(sets){ return sets.reduce((a,b)=>a+(+b||0),0); }
+function dstr(ts){
+  const d=new Date(ts), n=new Date();
+  const days=Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5);
+  if(days===0) return 'today'; if(days===1) return 'yesterday';
+  if(days<7) return days+'d ago';
+  return d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+}
+// most recent logged entry for a ladder
+function lastEntry(id){
+  for(let i=state.sessions.length-1;i>=0;i--){
+    const s=state.sessions[i];
+    const e=s.entries.find(e=>e.ladder===id && e.sets.length);
+    if(e) return {e,s};
+  }
+  return null;
+}
+// ready to advance? all sets at/above hi and enough sets, at the current tier
+function readiness(id){
+  const ti=tierOf(id), td=tierData(id,ti), last=lastEntry(id);
+  if(!last||last.e.tier!==ti) return null;
+  const st=last.e.sets;
+  if(st.length>=td.s && st.every(v=>v>=td.hi)) return 'ready';
+  return null;
+}
+function toast(msg){
+  const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('on');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('on'),2100);
+}
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* In-app confirm. Native confirm() is blocked in the sandboxed frame, so we roll our own. */
+let confirmCb=null;
+function ask(title,body,yesLabel,cb){
+  confirmCb=cb;
+  document.getElementById('mTitle').textContent=title;
+  document.getElementById('mBody').textContent=body;
+  document.getElementById('mYes').textContent=yesLabel||'Delete';
+  const sc=document.getElementById('scrim'); sc.hidden=false;
+  const y=document.getElementById('mYes'); if(y.focus) y.focus();
+}
+function closeAsk(){ document.getElementById('scrim').hidden=true; confirmCb=null; }
+
+/* draft management */
+function dayIndex(){
+  if(state.draft && state.draft.program===state.program) return state.draft.day;
+  return state.cursor[state.program]||0;
+}
+function ensureDraft(di){
+  if(!state.draft||state.draft.program!==state.program||state.draft.day!==di){
+    state.draft={program:state.program,day:di,entries:{},note:''};
+  }
+  const d=state.draft;
+  days()[di].slots.forEach(id=>{
+    if(!d.entries[id]) d.entries[id]={tier:tierOf(id),sets:Array(tierData(id,tierOf(id)).s).fill('')};
+  });
+  return d;
+}
+
+/* ============================================================
+   METRICS
+   ============================================================ */
+function monday(ts){
+  const d=new Date(ts); d.setHours(0,0,0,0);
+  d.setDate(d.getDate()-((d.getDay()+6)%7));
+  return d.getTime();
+}
+function metrics(){
+  const S=state.sessions;
+  let reps=0, holdSecs=0, sets=0;
+  const gSets={Push:0,Pull:0,Legs:0,Core:0};
+  const best={};                       // ladder -> {v, tier, ts}
+  S.forEach(s=>s.entries.forEach(e=>{
+    const L=LADDERS[e.ladder]; if(!L) return;
+    const t=L.t[e.tier]||L.t[0];
+    sets+=e.sets.length;
+    gSets[groupOf(e.ladder)]+=e.sets.length;
+    if(t.u===S_UNIT) holdSecs+=total(e.sets); else reps+=total(e.sets);
+    const top=Math.max(...e.sets);
+    const b=best[e.ladder];
+    if(!b || e.tier>b.tier || (e.tier===b.tier && top>b.v)) best[e.ladder]={v:top,tier:e.tier,ts:s.ts};
+  }));
+
+  // ladder climb: how far up every ladder you are, overall
+  let climbed=0, rungsTotal=0;
+  for(const k in LADDERS){ climbed+=tierOf(k); rungsTotal+=LADDERS[k].t.length-1; }
+
+  // weekly consistency, last 8 weeks
+  const thisMon=monday(Date.now()), weeks=[];
+  for(let i=7;i>=0;i--){
+    const start=thisMon-i*6048e5, end=start+6048e5;
+    weeks.push({start,n:S.filter(s=>s.ts>=start&&s.ts<end).length});
+  }
+  // streak of consecutive weeks (ending this week or last) with a session
+  let streak=0;
+  for(let i=weeks.length-1;i>=0;i--){
+    if(weeks[i].n>0) streak++;
+    else if(i!==weeks.length-1) break;      // current week not started yet is forgiven
+  }
+  const readyCount=Object.keys(LADDERS).filter(k=>readiness(k)).length;
+  const last=S.length?S[S.length-1]:null;
+  const daysSince=last?Math.round((Date.now()-last.ts)/864e5):null;
+  return {sessions:S.length,reps,holdSecs,sets,gSets,best,climbed,rungsTotal,weeks,streak,readyCount,daysSince};
+}
+
+function nextUpCard(){
+  const di=dayIndex(), day=days()[di];
+  const names=day.slots.map(id=>LADDERS[id].t[tierOf(id)].n);
+  return '<div class="banner" style="margin-top:14px"><div class="ph" style="color:var(--invMuted);font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase">Up next</div>'+
+    '<h3>Day '+day.id+' — '+day.title+'</h3>'+
+    '<p>'+names.slice(0,3).join(' · ')+(names.length>3?' · +'+(names.length-3)+' more':'')+'</p>'+
+    '<div class="bbtns"><button id="goSession">Open the sheet</button></div></div>';
+}
+
+function renderSummary(){
+  if(state.sessions.length<1){
+    return '<div class="sesshead"><h1>Welcome</h1><div class="sub">'+prog().label+' &nbsp;·&nbsp; nothing logged yet</div></div>'+
+      nextUpCard()+
+      '<div class="panel"><div class="ph">Before your first session</div><h3>Set your starting rungs</h3>'+
+      '<div class="pnote" style="margin-top:7px">You are a beginner on some movements and advanced on others, so open <b>Ladders</b> and set the tier you can actually work today. Everything on this page — volume, climb, personal bests — builds from there.</div></div>';
+  }
+  const m=metrics();
+  const pct=Math.round(m.climbed/m.rungsTotal*100);
+  let h='<div class="sesshead"><h1>Summary</h1><div class="sub">'+prog().label+' &nbsp;·&nbsp; '+
+    (m.daysSince===0?'trained today':m.daysSince===1?'trained yesterday':'last session '+m.daysSince+' days ago')+'</div></div>';
+  h+=nextUpCard();
+
+  /* KPI tiles */
+  h+='<div class="kpis">';
+  h+='<div class="kpi hero"><h4>Ladder climb</h4><div class="big">'+pct+'<small>%</small></div>'+
+     '<div class="track" style="margin-top:8px"><i class="sig" style="width:'+pct+'%"></i></div>'+
+     '<div class="sub">'+m.climbed+' of '+m.rungsTotal+' rungs cleared across all 16 movements.</div></div>';
+  h+='<div class="kpi"><h4>Sessions</h4><div class="big">'+m.sessions+'</div><div class="sub">'+m.sets+' sets logged</div></div>';
+  h+='<div class="kpi"><h4>Week streak</h4><div class="big">'+m.streak+'</div><div class="sub">'+
+     (m.streak>1?'consecutive weeks trained':m.streak===1?'week in — keep it running':'restart it this week')+'</div></div>';
+  h+='<div class="kpi"><h4>Reps banked</h4><div class="big">'+m.reps.toLocaleString()+'</div><div class="sub">plus '+
+     (m.holdSecs>=60?Math.round(m.holdSecs/60)+' min':m.holdSecs+'s')+' under tension</div></div>';
+  h+='<div class="kpi"><h4>Ready to move up</h4><div class="big">'+m.readyCount+'</div><div class="sub">'+
+     (m.readyCount?'movement'+(m.readyCount>1?'s':'')+' maxed out — see Ladders':'nothing maxed out yet')+'</div></div>';
+  h+='</div>';
+
+  /* Consistency */
+  const maxW=Math.max(3,...m.weeks.map(w=>w.n));
+  h+='<div class="panel"><div class="ph">Consistency</div><h3>Sessions per week</h3><div class="chart">';
+  m.weeks.forEach((w,i)=>{
+    const d=new Date(w.start);
+    h+='<div class="col'+(i===m.weeks.length-1?' last':'')+(w.n===0?' zero':'')+'">'+
+       '<span class="cval">'+(w.n||'')+'</span>'+
+       '<div class="bar" style="height:'+(w.n?Math.max(6,w.n/maxW*100):3)+'%"></div>'+
+       '<span class="clab">'+d.toLocaleDateString(undefined,{month:'numeric',day:'numeric'})+'</span></div>';
+  });
+  h+='</div><div class="pnote">Target is '+days().length+' a week on the '+prog().label.toLowerCase()+'. Consistency beats intensity — this is the chart that predicts your progress.</div></div>';
+
+  /* Volume trend */
+  const recent=state.sessions.slice(-10);
+  const vols=recent.map(s=>{
+    let v=0; s.entries.forEach(e=>{ const L=LADDERS[e.ladder]; if(L) v+=total(e.sets); });
+    return {v,day:s.day,ts:s.ts};
+  });
+  const maxV=Math.max(...vols.map(x=>x.v),1);
+  h+='<div class="panel"><div class="ph">Workload</div><h3>Volume per session</h3><div class="chart">';
+  vols.forEach((x,i)=>{
+    h+='<div class="col'+(i===vols.length-1?' last':'')+'">'+
+       '<span class="cval">'+x.v+'</span>'+
+       '<div class="bar" style="height:'+Math.max(6,x.v/maxV*100)+'%"></div>'+
+       '<span class="clab">'+x.day+'</span></div>';
+  });
+  h+='</div><div class="pnote">Total reps and seconds across all five movements, last '+vols.length+' session'+(vols.length>1?'s':'')+'. Compare like days (A to A) — B days naturally run higher.</div></div>';
+
+  /* Balance */
+  const gTotal=Object.values(m.gSets).reduce((a,b)=>a+b,0)||1;
+  h+='<div class="panel"><div class="ph">Balance</div><h3>Where the work goes</h3><div class="hbars">';
+  Object.keys(GROUPS).forEach(g=>{
+    const p=Math.round(m.gSets[g]/gTotal*100);
+    h+='<div class="hb"><div class="hbtop"><span class="hbn">'+g+'</span><span class="hbv">'+p+'% · '+m.gSets[g]+' sets</span></div>'+
+       '<div class="track"><i style="width:'+p+'%"></i></div></div>';
+  });
+  h+='</div><div class="pnote">Push and pull should sit close together. A pull share well under push is the classic calisthenics imbalance — it shows up as shoulder pain long before it shows up in the mirror.</div></div>';
+
+  /* Ladder climb per movement */
+  h+='<div class="panel"><div class="ph">Progression</div><h3>Rung by movement</h3><div class="hbars">';
+  Object.keys(LADDERS).map(id=>{
+    const L=LADDERS[id], ti=tierOf(id);
+    return {id,L,ti,p:Math.round(ti/(L.t.length-1)*100)};
+  }).sort((a,b)=>b.p-a.p).forEach(x=>{
+    h+='<div class="hb"><div class="hbtop"><span class="hbn">'+x.L.name+'</span>'+
+       '<span class="hbv">T'+(x.ti+1)+'/'+x.L.t.length+(readiness(x.id)?' ▲':'')+'</span></div>'+
+       '<div class="track"><i class="'+(readiness(x.id)?'sig':'')+'" style="width:'+Math.max(3,x.p)+'%"></i></div></div>';
+  });
+  h+='</div><div class="pnote">Sorted by how far up each ladder you are. The gap between top and bottom is what the split is there to close.</div></div>';
+
+  /* Personal bests */
+  const pbs=Object.keys(m.best).map(id=>({id,...m.best[id]})).sort((a,b)=>b.ts-a.ts);
+  if(pbs.length){
+    h+='<div class="panel"><div class="ph">Personal bests</div><h3>Best set on record</h3>';
+    pbs.forEach(p=>{
+      const L=LADDERS[p.id], t=L.t[p.tier];
+      h+='<div class="pbrow"><span class="pn"><i>'+L.p+' · Tier '+(p.tier+1)+'</i>'+t.n+'</span>'+
+         '<span class="pv"><b>'+p.v+'</b>'+(t.u===S_UNIT?'s':'')+'</span></div>';
+    });
+    h+='</div>';
+  }
+  return h;
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function rungs(id,ti,ready){
+  const n=LADDERS[id].t.length; let h='<div class="rungs">';
+  for(let i=0;i<n;i++){
+    const c=i<ti?'done':i===ti?('now'+(ready?' ready':'')):'';
+    h+='<div class="rung '+c+'"></div>';
+  }
+  return h+'</div>';
+}
+
+function renderSession(){
+  const di=dayIndex(), day=days()[di], d=ensureDraft(di);
+  const num=state.sessions.length+1;
+  let h='<div class="chips">';
+  days().forEach((dd,i)=>{
+    const nx=i===(state.cursor[state.program]||0);
+    h+='<button class="chip" aria-pressed="'+(i===di)+'" data-day="'+i+'"><b>'+dd.id+'</b>'+dd.title.replace('Upper — ','').replace('Lower + Core','Lower+Core')+(nx?'<span class="nx">NEXT</span>':'')+'</button>';
+  });
+  h+='</div>';
+  h+='<div class="sesshead"><h1>'+day.title+'</h1><div class="sub">Session '+num+' &nbsp;·&nbsp; '+prog().label+' &nbsp;·&nbsp; Day '+day.id+' of '+days().length+'</div></div>';
+
+  if(banner) h+=banner;
+
+  day.slots.forEach((id,slotIx)=>{
+    const L=LADDERS[id], ent=d.entries[id], ti=ent.tier, td=L.t[ti];
+    const ready=readiness(id), last=lastEntry(id);
+    h+='<div class="mv" data-mv="'+id+'">';
+    h+='<div class="mv-top"><div class="mv-eyebrow"><span class="mv-pattern">'+L.p+'</span>'+
+       '<span class="tierbadge">Tier '+(ti+1)+'<i>/'+L.t.length+'</i></span></div>';
+    h+=rungs(id,ti,!!ready);
+    h+='<div class="mv-name">'+td.n+'</div>';
+    h+='<select class="tiersel" data-sel="'+id+'">';
+    L.t.forEach((t,i)=>{
+      h+='<option value="'+i+'"'+(i===ti?' selected':'')+'>'+(i+1)+'. '+t.n+(i===tierOf(id)?'  ★ current':'')+'</option>';
+    });
+    h+='</select><div class="selhint">Change if you worked a different level today</div></div>';
+
+    h+='<div class="mv-body"><div class="row2">';
+    // previous
+    h+='<div class="box"><h4>Last time</h4>';
+    if(last){
+      const lt=L.t[last.e.tier];
+      h+='<div class="val">'+fmtSets(last.e.sets,lt.u)+'</div>';
+      h+='<div class="exname">'+lt.n+'</div>';
+      h+='<div class="meta">'+dstr(last.s.ts)+' · '+total(last.e.sets)+' total'+(last.e.tier!==ti?' · tier '+(last.e.tier+1):'')+'</div>';
+    } else h+='<div class="val">—</div><div class="meta">No history yet. This one sets your baseline.</div>';
+    h+='</div>';
+    // target
+    h+='<div class="box target"><h4>Today\u2019s target</h4>';
+    h+='<div class="val">'+td.s+' × '+td.lo+'–'+unitLabel(td.u,td.hi)+'</div>';
+    let tip;
+    if(ready) tip='You maxed this tier last time — move up a rung.';
+    else if(last&&last.e.tier===ti) tip='Beat '+total(last.e.sets)+' total '+(td.u===S?'seconds':'reps')+'.';
+    else if(last) tip='New tier — start near '+unitLabel(td.u,td.lo)+' and build.';
+    else tip='Find your working range.';
+    h+='<div class="meta">'+tip+(td.side?' <b>Per side.</b>':'')+'</div></div>';
+    h+='</div>';
+
+    // sets
+    h+='<div class="setlbl">Sets — '+(td.u===S?'seconds held':'reps')+(td.side?' per side':'')+'</div><div class="sets">';
+    ent.sets.forEach((v,i)=>{
+      h+='<div class="setcell"><label>'+(i+1)+'</label><input inputmode="numeric" pattern="[0-9]*" data-in="'+id+'" data-i="'+i+'" value="'+(v===''?'':v)+'" class="'+(v!==''&&v!=null?'filled':'')+'" placeholder="–"></div>';
+    });
+    h+='</div><div class="setctl"><button class="tbtn" data-add="'+id+'">+ Add set</button>'+
+       (ent.sets.length>1?'<button class="tbtn" data-rm="'+id+'">− Remove</button>':'')+'</div>';
+
+    if(ready) h+='<div class="flag">▲ Ready to level up — Tier '+(ti+2<=L.t.length?ti+2:ti+1)+'</div>';
+    h+='</div></div>';
+  });
+
+  h+='<textarea class="noteinp" rows="2" id="note" placeholder="Session notes — energy, form cues, niggles…">'+esc(d.note||'')+'</textarea>';
+  const any=Object.values(d.entries).some(e=>e.sets.some(v=>v!==''&&v!=null));
+  h+='<button class="save" id="saveBtn"'+(any?'':' disabled')+'>Save session</button>';
+  h+='<button class="save ghost" id="clearBtn">Clear this sheet</button>';
+  return h;
+}
+
+function renderHistory(){
+  if(!state.sessions.length) return '<div class="empty"><div class="eh">No sessions yet</div><p>Log your first workout and it will show up here, with every rep you can measure against.</p></div>';
+  let h='<div class="sesshead"><h1>History</h1><div class="sub">'+state.sessions.length+' session'+(state.sessions.length>1?'s':'')+' logged</div></div>';
+  [...state.sessions].reverse().forEach(s=>{
+    const P=PROGRAMS[s.program]||PROGRAMS.p3;
+    const day=P.days.find(d=>d.id===s.day)||{title:s.day};
+    h+='<details class="hist"><summary><span class="ht">'+day.title+'</span>'+
+       '<span class="hsum"><span class="hd">'+new Date(s.ts).toLocaleDateString(undefined,{month:'short',day:'numeric'})+'<br>'+P.label.split(' ')[0]+' · '+s.day+'</span>'+
+       '<button class="delx" data-del="'+s.id+'" title="Delete this session" aria-label="Delete session">✕</button></span></summary><div class="hbody">';
+    s.entries.forEach(e=>{
+      const L=LADDERS[e.ladder]; if(!L) return;
+      const t=L.t[e.tier]||{n:'?',u:R};
+      h+='<div class="he"><span class="hn"><i>'+L.p+' · T'+(e.tier+1)+'</i>'+t.n+'</span><span class="hs">'+fmtSets(e.sets,t.u)+'</span></div>';
+    });
+    if(s.note) h+='<div class="hnote">'+esc(s.note)+'</div>';
+    h+='<button class="danger" data-del="'+s.id+'" style="margin-top:12px">Delete this session</button>';
+    h+='</div></details>';
+  });
+  return h;
+}
+
+function renderLadders(){
+  let h='<div class="sesshead"><h1>Ladders</h1><div class="sub">Your current rung on every movement</div></div>';
+  for(const id in LADDERS){
+    const L=LADDERS[id], ti=tierOf(id), td=L.t[ti], ready=readiness(id), last=lastEntry(id);
+    h+='<div class="ld"><div class="ldtop"><div style="flex:1;min-width:0">'+
+       '<div class="mv-pattern">'+L.p+'</div><div class="ldname">'+L.name+'</div>'+
+       rungs(id,ti,!!ready)+
+       '<div class="cur">'+(ti+1)+'. '+td.n+'</div>'+
+       '<div class="presc">'+td.s+' × '+td.lo+'–'+unitLabel(td.u,td.hi)+(td.side?' per side':'')+
+       (last?'  ·  last '+fmtSets(last.e.sets,L.t[last.e.tier].u):'')+'</div>'+
+       (ready?'<div class="flag">▲ Ready to level up</div>':'')+
+       '</div><div class="stepper">'+
+       '<button data-dn="'+id+'"'+(ti===0?' disabled':'')+' aria-label="Down a tier">−</button>'+
+       '<button data-up="'+id+'"'+(ti>=L.t.length-1?' disabled':'')+' aria-label="Up a tier">+</button>'+
+       '</div></div></div>';
+  }
+  return h;
+}
+
+function renderSettings(){
+  const n=state.sessions.filter(s=>s.program==='p3').length;
+  let h='<div class="sesshead"><h1>Setup</h1><div class="sub">Program · progress · data</div></div>';
+  h+='<div class="sec"><h2>Program</h2>';
+  ['p3','p4'].forEach(p=>{
+    const P=PROGRAMS[p], on=state.program===p;
+    h+='<div class="opt" role="button" tabindex="0" aria-pressed="'+on+'" data-prog="'+p+'">'+
+       '<div class="oh"><span class="on">'+P.label+'</span>'+(on?'<span class="ob">Active</span>':'')+'</div>'+
+       '<p>'+P.note+'</p></div>';
+  });
+  h+='</div>';
+  if(state.program==='p3'){
+    h+='<div class="sec"><h2>Transition</h2><div class="banner"><h3>'+
+       (n>=24?'Time to add the fourth day':'Building your base')+'</h3><p>'+
+       (n>=24
+        ? 'You have '+n+' three-day sessions logged — enough consistency and tier progress to handle the extra volume. Switch above whenever you\u2019re ready; your tiers carry across untouched.'
+        : n+' of ~24 three-day sessions logged (about 8 weeks). Stay here until pull-ups, dips and single-leg squats are all past their first two tiers — then the 4-day split unlocks real value.')+
+       '</p></div></div>';
+  }
+  h+='<div class="sec"><h2>Appearance</h2>';
+  [['light','Daylight','Pale eucalyptus paper with pine ink. Best in a bright gym or outdoors.'],
+   ['dark','Night','Deep pine black with mint bars. Easier on the eyes for early or late sessions.']].forEach(([k,label,desc])=>{
+    const on=state.theme===k;
+    h+='<div class="opt" role="button" tabindex="0" aria-pressed="'+on+'" data-settheme="'+k+'">'+
+       '<div class="oh"><span class="on">'+label+'</span>'+(on?'<span class="ob">On</span>':'')+'</div>'+
+       '<p>'+desc+'</p></div>';
+  });
+  h+='</div>';
+  h+='<div class="sec"><h2>Your numbers</h2><div class="ld"><div class="presc" style="font-size:13px;line-height:1.7">'+
+     'Sessions logged: <b>'+state.sessions.length+'</b><br>'+
+     'Movements at tier 3+: <b>'+Object.keys(LADDERS).filter(k=>tierOf(k)>=2).length+'</b> / '+Object.keys(LADDERS).length+'<br>'+
+     'Ready to level up: <b>'+Object.keys(LADDERS).filter(k=>readiness(k)).length+'</b>'+
+     '</div></div></div>';
+  h+='<div class="sec"><h2>Data</h2><button class="danger" id="reset">Erase all sessions and tiers</button></div>';
+  return h;
+}
+
+// Tab order, left to right — swipe and nav both walk this list.
+const TABS = ['summary','session','ladders','history','settings'];
+
+// render(): keeps you exactly where you were.
+// Pass 'top' only when the whole view changes (tab switch, day switch, save).
+// Pass dir 'next' / 'prev' to slide the new page in from that side.
+function render(scroll,dir){
+  const y=window.scrollY;
+  const v=document.getElementById('view');
+  v.innerHTML = tab==='session'?renderSession() : tab==='summary'?renderSummary() : tab==='history'?renderHistory() : tab==='ladders'?renderLadders() : renderSettings();
+  document.getElementById('hmeta').innerHTML =
+    (state.program==='p3'?'3-day':'4-day')+' &nbsp;·&nbsp; '+state.sessions.length+'&nbsp;logged';
+  document.querySelectorAll('#nav button').forEach(b=>b.setAttribute('aria-current', b.dataset.t===tab));
+  if(dir){
+    v.classList.remove('in-next','in-prev');
+    void v.offsetWidth;                       // restart the animation
+    v.classList.add(dir==='next'?'in-next':'in-prev');
+  }
+  if(scroll==='top'){ window.scrollTo(0,0); return; }
+  // restore before paint so there is no visible jump
+  window.scrollTo(0,y);
+  requestAnimationFrame(()=>{ if(Math.abs(window.scrollY-y)>1) window.scrollTo(0,y); });
+}
+
+/* Move to a tab by name, sliding in the direction you travelled. */
+function goTab(next){
+  if(TABS.indexOf(next)<0) return;
+  if(next===tab){ banner=null; render('top'); return; }   // tapping the current tab returns you to the top
+  const dir = TABS.indexOf(next) > TABS.indexOf(tab) ? 'next' : 'prev';
+  tab=next; banner=null; render('top',dir);
+}
+
+/* ============================================================
+   EVENTS
+   ============================================================ */
+/* dialog wiring */
+document.getElementById('mYes').addEventListener('click',()=>{ const cb=confirmCb; closeAsk(); if(cb) cb(); });
+document.getElementById('mNo').addEventListener('click',closeAsk);
+document.getElementById('scrim').addEventListener('click',e=>{ if(e.target.id==='scrim') closeAsk(); });
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape' && !document.getElementById('scrim').hidden){ closeAsk(); return; }
+  // option cards are divs, so give them real keyboard activation
+  const o=e.target.closest && e.target.closest('.opt');
+  if(o && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); o.click(); }
+});
+
+document.getElementById('nav').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-t]'); if(!b) return;
+  goTab(b.dataset.t);
+});
+
+/* ---- swipe between pages ----------------------------------------------
+   Pointer events cover touch and mouse. A gesture only counts as a swipe if
+   it travels far enough, mostly sideways, and quickly — so vertical scrolling
+   and taps are never mistaken for one. A swipe also cancels the click it would
+   otherwise have fired, so swiping across a button doesn't press it. */
+(function(){
+  const MIN_DIST = 60;      // px of horizontal travel required
+  const RATIO    = 1.6;     // must be this much more horizontal than vertical
+  const MAX_TIME = 800;     // ms — a slow drag isn't a swipe
+  let x0=0, y0=0, t0=0, lx=0, ly=0, tracking=false, swiped=false;
+
+  // Only protect a field you're actually editing — dragging there moves the caret
+  // or selects text. An unfocused input is just part of the page, so a swipe across
+  // it navigates, and the click suppression stops it stealing focus afterwards.
+  const blocked = t => {
+    if(!t || !t.closest) return false;
+    const f = t.closest('input,textarea,select');
+    return !!f && document.activeElement === f;
+  };
+
+  function finish(x,y){
+    if(!tracking) return;
+    tracking=false;
+    const dx=x-x0, dy=y-y0;
+    if(Date.now()-t0 > MAX_TIME) return;
+    if(Math.abs(dx) < MIN_DIST) return;
+    if(Math.abs(dx) < Math.abs(dy)*RATIO) return;
+    const i = TABS.indexOf(tab);
+    const n = dx<0 ? i+1 : i-1;                             // swipe left = next page
+    swiped=true;                                            // suppress the click either way
+    if(n<0 || n>=TABS.length) return;                       // already at an end
+    goTab(TABS[n]);
+  }
+
+  document.addEventListener('pointerdown', e => {
+    swiped=false;
+    if(!document.getElementById('scrim').hidden) return;   // dialog is open
+    if(blocked(e.target)) return;                           // let form controls be
+    x0=lx=e.clientX; y0=ly=e.clientY; t0=Date.now(); tracking=true;
+  }, {passive:true});
+
+  document.addEventListener('pointermove', e => {
+    if(tracking){ lx=e.clientX; ly=e.clientY; }
+  }, {passive:true});
+
+  document.addEventListener('pointerup', e => finish(e.clientX, e.clientY), {passive:true});
+
+  // Touch pointers get cancelled the moment the gesture is claimed for scrolling,
+  // so resolve from the last position we saw rather than dropping the gesture.
+  document.addEventListener('pointercancel', () => finish(lx, ly), {passive:true});
+
+  // Swallow the click that follows a swipe.
+  document.addEventListener('click', e => {
+    if(swiped){ swiped=false; e.preventDefault(); e.stopPropagation(); }
+  }, true);
+})();
+
+document.getElementById('view').addEventListener('click',e=>{
+  const t=e.target;
+
+  const chip=t.closest('[data-day]');
+  if(chip){ const di=+chip.dataset.day; if(di===dayIndex()) return;
+    state.draft=null; ensureDraft(di); banner=null; save(); render('top'); return; }
+
+  const add=t.closest('[data-add]');
+  if(add){ const id=add.dataset.add; state.draft.entries[id].sets.push(''); save(); render();
+    const cells=document.querySelectorAll('[data-in="'+id+'"]');
+    if(cells.length) cells[cells.length-1].focus({preventScroll:true});
+    return; }
+
+  const rm=t.closest('[data-rm]');
+  if(rm){ const id=rm.dataset.rm; const s=state.draft.entries[id].sets; if(s.length>1) s.pop(); save(); render(); return; }
+
+  const up=t.closest('[data-up]');
+  if(up){ const id=up.dataset.up; state.tiers[id]=Math.min(tierOf(id)+1,LADDERS[id].t.length-1);
+    if(state.draft&&state.draft.entries[id]){ state.draft.entries[id].tier=state.tiers[id];
+      state.draft.entries[id].sets=Array(tierData(id,state.tiers[id]).s).fill(''); }
+    save(true); toast(LADDERS[id].name+' → tier '+(state.tiers[id]+1)); render(); return; }
+
+  const dn=t.closest('[data-dn]');
+  if(dn){ const id=dn.dataset.dn; state.tiers[id]=Math.max(tierOf(id)-1,0);
+    if(state.draft&&state.draft.entries[id]){ state.draft.entries[id].tier=state.tiers[id];
+      state.draft.entries[id].sets=Array(tierData(id,state.tiers[id]).s).fill(''); }
+    save(true); toast(LADDERS[id].name+' → tier '+(state.tiers[id]+1)); render(); return; }
+
+  const th=t.closest('[data-settheme]');
+  if(th){ state.theme=th.dataset.settheme; applyTheme(); save(true); render();
+    toast(state.theme==='dark'?'Night mode on':'Daylight mode on'); return; }
+
+  const pr=t.closest('[data-prog]');
+  if(pr){
+    const p=pr.dataset.prog;
+    if(p===state.program) return;
+    const dirty=state.draft && Object.values(state.draft.entries||{}).some(en=>en.sets.some(v=>v!==''&&v!=null));
+    const go=()=>{ state.program=p; state.draft=null; save(true); goTab('session'); toast('Switched to '+prog().label); };
+    if(dirty) ask('Switch program?','You have unsaved reps on the current sheet. Switching clears them. Your tier positions carry over untouched.','Switch',go);
+    else go();
+    return;
+  }
+
+  const del=t.closest('[data-del]');
+  if(del){
+    e.preventDefault();                       // don't toggle the <details> open/closed
+    const id=del.dataset.del;
+    const s=state.sessions.find(x=>x.id===id);
+    if(!s) return;
+    const P=PROGRAMS[s.program]||PROGRAMS.p3;
+    const dayT=(P.days.find(d=>d.id===s.day)||{title:s.day}).title;
+    const when=new Date(s.ts).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+    ask('Delete this session?',
+        dayT+' · '+when+'\n'+s.entries.length+' movements logged. This cannot be undone.',
+        'Delete', ()=>{
+      const wasLast = state.sessions.length && state.sessions[state.sessions.length-1].id===id;
+      state.sessions=state.sessions.filter(x=>x.id!==id);
+      if(wasLast && s.program===state.program){
+        const di=P.days.findIndex(d=>d.id===s.day);
+        if(di>-1) state.cursor[state.program]=di;
+      }
+      banner=null; save(true); render();
+      toast('Session deleted'+(wasLast?' · Day '+s.day+' is next again':''));
+    });
+    return;
+  }
+
+  if(t.id==='goSession'){ goTab('session'); return; }
+  if(t.id==='saveBtn'){ saveSession(); return; }
+  if(t.id==='clearBtn'){
+    ask('Clear this sheet?','Every rep you have typed on this day will be wiped. Nothing already saved is affected.','Clear',()=>{
+      state.draft=null; save(true); render('top'); toast('Sheet cleared'); });
+    return; }
+  if(t.id==='reset'){
+    ask('Erase everything?','All sessions, personal bests and tier positions go back to zero. Your theme is kept. This cannot be undone.','Erase',()=>{
+      const keepTheme=state.theme;
+      state=blankState(); state.theme=keepTheme; applyTheme(); save(true); goTab('summary'); toast('Everything cleared'); });
+    return; }
+  if(t.id==='levelUpAll'){
+    const ids=JSON.parse(t.dataset.ids);
+    ids.forEach(id=>{ state.tiers[id]=Math.min(tierOf(id)+1,LADDERS[id].t.length-1); });
+    save(true); goTab('ladders'); toast(ids.length+' movement'+(ids.length>1?'s':'')+' moved up'); return;
+  }
+  if(t.id==='dismissBanner'){ banner=null; render(); return; }
+});
+
+document.getElementById('view').addEventListener('input',e=>{
+  const inp=e.target.closest('[data-in]');
+  if(inp){
+    const id=inp.dataset.in, i=+inp.dataset.i;
+    let v=inp.value.replace(/[^0-9]/g,'').slice(0,3);
+    if(inp.value!==v) inp.value=v;
+    state.draft.entries[id].sets[i]= v===''?'':+v;
+    inp.classList.toggle('filled', v!=='');
+    const btn=document.getElementById('saveBtn');
+    if(btn) btn.disabled=!Object.values(state.draft.entries).some(en=>en.sets.some(x=>x!==''&&x!=null));
+    save();
+    return;
+  }
+  if(e.target.id==='note'){ state.draft.note=e.target.value; save(); }
+});
+
+document.getElementById('view').addEventListener('change',e=>{
+  const sel=e.target.closest('[data-sel]');
+  if(!sel) return;
+  const id=sel.dataset.sel, ti=+sel.value;
+  state.tiers[id]=ti;
+  state.draft.entries[id].tier=ti;
+  state.draft.entries[id].sets=Array(tierData(id,ti).s).fill('');
+  save(true); render();
+});
+
+function saveSession(){
+  const d=state.draft, day=days()[d.day];
+  const entries=[];
+  day.slots.forEach(id=>{
+    const en=d.entries[id];
+    const sets=en.sets.filter(v=>v!==''&&v!=null).map(Number);
+    if(sets.length) entries.push({ladder:id,tier:en.tier,sets});
+  });
+  if(!entries.length) return;
+  const sid='s'+Date.now();
+  state.sessions.push({id:sid,ts:Date.now(),program:state.program,day:day.id,note:(d.note||'').trim(),entries});
+  state.cursor[state.program]=(d.day+1)%days().length;
+  state.draft=null;
+
+  const undo='<button class="alt" data-del="'+sid+'">Delete it</button>';
+  const ready=entries.map(e=>e.ladder).filter(id=>readiness(id));
+  if(ready.length){
+    banner='<div class="banner"><h3>'+ready.length+' movement'+(ready.length>1?'s':'')+' maxed out</h3><p>'+
+      ready.map(id=>LADDERS[id].name+' — '+LADDERS[id].t[tierOf(id)].n).join(' · ')+
+      '. You hit the top of the range on every set, so the next rung is the right load.</p><div class="bbtns">'+
+      '<button id="levelUpAll" data-ids=\''+JSON.stringify(ready)+'\'>Move '+(ready.length>1?'them':'it')+' up</button>'+
+      '<button class="alt" id="dismissBanner">Stay here</button>'+undo+'</div></div>';
+  } else {
+    banner='<div class="banner"><h3>Session saved</h3><p>Next up is Day '+days()[state.cursor[state.program]].id+' — '+days()[state.cursor[state.program]].title+'. Your numbers are now the target to beat.</p><div class="bbtns"><button class="alt" id="dismissBanner">Got it</button>'+undo+'</div></div>';
+  }
+  save(true); render('top');
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+(async()=>{
+  document.getElementById('view').innerHTML='<div class="empty"><div class="eh">Loading</div><p>Fetching your log…</p></div>';
+  await load();
+  render('top');
+  if(!state.hintedSwipe){
+    state.hintedSwipe=true; save();
+    setTimeout(()=>toast('Swipe left or right to change page'),1000);
+  }
+})();
+
+/* Offline support. Only meaningful when served over http(s); silently skipped
+   inside the artifact frame or when opened from a file:// path. */
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>
